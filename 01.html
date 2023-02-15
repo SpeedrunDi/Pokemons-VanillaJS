@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="preloader">
+        <div class="loader"></div>
+    </div>
+    <div class="container pokemons-block">
+        <div class="list-block">
+
+        </div>
+        <div class="information-block">
+
+        </div>
+    </div>
+    <script>
+        const loader = document.getElementById('preloader');
+        const container = document.querySelector('.container');
+        const listPokemons = document.querySelector('.list-block');
+        const informationPokemon = document.querySelector('.information-block');
+
+        const ol = document.createElement('ol');
+        ol.className = 'list-group list';
+
+        const loaderRemove = () => {
+            container.style.display = 'flex';
+            loader.style.display = 'none';
+        };
+
+        const loaderAdd = () => {
+            container.style.display = 'none';
+            loader.style.display = 'block';
+        };
+
+        let data = {
+            pokemons: [],
+            information: {
+                type: '',
+            },
+            linkPrevious: '',
+            linkNext: '',
+        };
+
+        const getPokemons = async urlPokemon => {
+            const reponse = await fetch(urlPokemon);
+            const pokemons = await reponse.json();
+
+            const pokemonsData = [];
+
+            pokemons.results.forEach(result => {
+                pokemonsData.push({name: result.name});
+            });
+
+            data = pokemonsData;
+            
+            data.linkNext = pokemons.next;
+            data.linkPrevious = pokemons.previous;
+        };
+
+        
+        const render = (pokemons, id, number) => {
+            pokemons.forEach(pokemon => {
+                const li = document.createElement('li');
+                li.innerHTML = `${id}. ${pokemon.name}`;
+                li.className = 'list-group-item item';
+                li.id = id;
+
+                id++;
+
+                ol.append(li);
+            });
+
+            listPokemons.innerHTML = `
+            <nav class="btn-pagination">
+                <ul class="pagination mx-auto">
+                    <li class="page-item">
+                        <span class="page-link btn" id="back">Back</span>
+                    </li>
+                    <li class="page-item active" aria-current="page">
+                        <span class="page-link">${number}</span>
+                    </li>
+                    <li class="page-item">
+                        <span class="page-link btn" id="next">Next</span>
+                    </li>
+                </ul>
+            </nav>
+            `
+
+            number++;
+        };
+
+        const getInfoPokemon = async idPokemon => {
+            const reponse = await fetch('https://pokeapi.co/api/v2/pokemon/' + idPokemon);
+            const result = await reponse.json();
+
+            let types = [];
+            data.information = {img: result.sprites.front_default, name: result.name, height: result.height, weight: result.weight};
+            result.types.forEach(type => {
+                types.push(type.type.name);    
+            });
+            
+            data.information.type = types;
+            console.log(result);
+        };
+
+        const renderInformation = () => {
+            informationPokemon.innerHTML = `
+            <div class="card info-pokemon" style="width: 18rem;">
+                <img src="${data.information.img}" class="card-img-top img" alt="pokemon">
+                <div class="card-body">
+                    <p class="card-text">Имя: ${data.information.name}</p>
+                    <p class="card-text">Тип: ${data.information.type}</p>
+                    <p class="card-text">Рост: ${data.information.height * 0.1} м.</p>
+                    <p class="card-text">Вес: ${data.information.weight * 0.1} кг.</p>
+                </div>
+            </div>
+            `;
+        };
+
+        const run = async () => {
+            loaderAdd();            
+
+            try {
+                await getPokemons('https://pokeapi.co/api/v2/pokemon/');
+                await render(data, id, number);
+                    
+                listPokemons.append(ol);
+            } catch (error) {
+                console.log(error);
+            }
+            
+            loaderRemove();
+        };
+
+        run();
+
+        let id = 1;
+        let number = 1;
+        listPokemons.addEventListener('click', async e => {
+            const idClick = e.target.id;
+
+            loaderAdd();
+
+            try {
+                if (idClick === 'back') {
+                    await getPokemons(data.linkPrevious);
+
+                    ol.innerHTML = '';
+
+                    id = id - 20;
+                    number--;
+                    await render(data, id, number);
+                
+                    listPokemons.append(ol);
+
+                    loaderRemove();
+                } else if (idClick === 'next') {
+                    await getPokemons(data.linkNext);
+
+                    ol.innerHTML = '';
+
+                    id = id + 20;
+                    number++;
+                    await render(data, id, number);
+                
+                    listPokemons.append(ol);
+
+                    loaderRemove();
+                } else {
+                    await getInfoPokemon(idClick);
+                    renderInformation();
+
+                    loaderRemove();
+                }
+            } catch (error) {
+                console.log(error);
+                loaderRemove();
+            }
+        });
+    </script>
+</body>
+</html>
